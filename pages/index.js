@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import Head from "next/head";
+import io from "socket.io-client";
+
+let socket;
 
 export default function Home() {
     const [rooms, setRooms] = useState([]);
@@ -16,7 +19,21 @@ export default function Home() {
 
     useEffect(() => {
         fetchRooms();
+        socketInitializer();
     }, []);
+
+    const socketInitializer = async () => {
+        await fetch("/api/socket");
+        socket = io();
+
+        socket.on("connect", () => {
+            console.log("connected");
+        });
+
+        socket.on("receiveMessage", message => {
+            setMessages(prevMessages => [...prevMessages, message]);
+        });
+    };
 
     const fetchRooms = async () => {
         const res = await fetch("/api/rooms");
@@ -55,21 +72,18 @@ export default function Home() {
         if (res.status === 200) {
             setJoinedRoom(roomName);
             setMessages([]);
-            fetchMessages(roomName);
+            socket.emit("joinRoom", { room: roomName });
         } else {
             alert(data.message);
         }
-    };
-
-    const fetchMessages = roomName => {
-        // Fetch and set the messages for the room (implement the backend API if necessary)
     };
 
     const sendMessage = async e => {
         e.preventDefault();
         if (joinedRoom) {
             const newMessage = { name, message, room: joinedRoom };
-            setMessages([...messages, newMessage]);
+            socket.emit("sendMessage", newMessage);
+            setMessages(prevMessages => [...prevMessages, newMessage]);
             setMessage("");
         }
     };
