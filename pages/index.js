@@ -5,11 +5,20 @@ import Pusher from 'pusher-js';
 export default function Home() {
   const [name, setName] = useState('');
   const [room, setRoom] = useState('');
+  const [rooms, setRooms] = useState([]);
+  const [password, setPassword] = useState('');
+  const [joinPassword, setJoinPassword] = useState('');
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [joined, setJoined] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/rooms')
+      .then((res) => res.json())
+      .then((data) => setRooms(data));
+  }, []);
 
   useEffect(() => {
     if (joined) {
@@ -19,15 +28,12 @@ export default function Home() {
 
       const channel = pusher.subscribe(room);
 
-      // Retrieve messages from local storage
       const storedMessages = JSON.parse(localStorage.getItem(`chat_${room}`)) || [];
       setMessages(storedMessages);
 
       channel.bind('message', (data) => {
         const newMessage = { name: data.name, message: data.message, image: data.image };
         setMessages((prevMessages) => [...prevMessages, newMessage]);
-
-        // Save messages to local storage
         localStorage.setItem(`chat_${room}`, JSON.stringify([...prevMessages, newMessage]));
       });
 
@@ -45,21 +51,41 @@ export default function Home() {
     }
   }, [joined, room]);
 
-  const handleJoin = async (e) => {
+  const handleCreateRoom = async (e) => {
     e.preventDefault();
-    await fetch('/api/pusher', {
+    const response = await fetch('/api/rooms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'join', room, name })
+      body: JSON.stringify({ room, password }),
     });
-    setJoined(true);
+    const data = await response.json();
+    if (data.message === 'Room created') {
+      setRooms([...rooms, { name: room, password }]);
+    } else {
+      alert(data.message);
+    }
+  };
+
+  const handleJoinRoom = async (roomName, roomPassword) => {
+    const response = await fetch('/api/joinRoom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ room: roomName, password: roomPassword }),
+    });
+    const data = await response.json();
+    if (data.message === 'Joined room') {
+      setRoom(roomName);
+      setJoined(true);
+    } else {
+      alert(data.message);
+    }
   };
 
   const handleLeave = async () => {
     await fetch('/api/pusher', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'leave', room, name })
+      body: JSON.stringify({ action: 'leave', room, name }),
     });
     setJoined(false);
     setRoom('');
@@ -100,15 +126,12 @@ export default function Home() {
     await fetch('/api/pusher', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'message', room, name, message, image: imageUrl })
+      body: JSON.stringify({ action: 'message', room, name, message, image: imageUrl }),
     });
 
     const newMessage = { name, message, image: imageUrl };
     setMessages([...messages, newMessage]);
-
-    // Save messages to local storage
     localStorage.setItem(`chat_${room}`, JSON.stringify([...messages, newMessage]));
-
     setMessage('');
     setImage(null);
     setImagePreview(null);
@@ -117,25 +140,49 @@ export default function Home() {
   return (
     <div className="container">
       {!joined ? (
-        <form className="form" onSubmit={handleJoin}>
-          <input
-            type="text"
-            className="input"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter your name"
-            required
-          />
-          <input
-            type="text"
-            className="input"
-            value={room}
-            onChange={(e) => setRoom(e.target.value)}
-            placeholder="Enter room name"
-            required
-          />
-          <button type="submit" className="button">Join</button>
-        </form>
+        <>
+          <form className="form" onSubmit={handleCreateRoom}>
+            <input
+              type="text"
+              className="input"
+              value={room}
+              onChange={(e) => setRoom(e.target.value)}
+              placeholder="Enter room name"
+              required
+            />
+            <input
+              type="password"
+              className="input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter room password (optional)"
+            />
+            <button type="submit" className="button">Create Room</button>
+          </form>
+
+          <h2>Available Rooms</h2>
+          <ul className="room-list">
+            {rooms.map((r) => (
+              <li key={r.name} className="room-item">
+                {r.name}
+                {r.password && (
+                  <input
+                    type="password"
+                    className="input"
+                    placeholder="Enter password"
+                    onChange={(e) => setJoinPassword(e.target.value)}
+                  />
+                )}
+                <button
+                  className="button"
+                  onClick={() => handleJoinRoom(r.name, joinPassword)}
+                >
+                  Join
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : (
         <>
           <h1>Room: {room}</h1>

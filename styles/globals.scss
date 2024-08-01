@@ -1,4 +1,25 @@
 // styles/globals.scss
+// styles/globals.scss
+// existing styles...
+
+.room-list {
+  list-style-type: none;
+  padding: 0;
+}
+
+.room-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.room-item button {
+  margin-left: 10px;
+}
+
 $primary-color: #0070f3;
 $secondary-color: #005bb5;
 
