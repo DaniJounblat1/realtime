@@ -12,22 +12,29 @@ export default function Home() {
 
     const channel = pusher.subscribe('my-channel');
 
-    channel.bind('my-event', (data) => {
+    channel.bind('user-count', (data) => {
       setOnlineUsers(data.onlineUsers);
-      setUserJoined(true);
-      setTimeout(() => setUserJoined(false), 3000);
     });
 
-    // Emit event on join
+    // Emit join event
     fetch('/api/pusher', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ message: 'User joined' }),
+      body: JSON.stringify({ action: 'join' }),
     });
 
+    // Emit leave event on unmount
     return () => {
+      fetch('/api/pusher', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'leave' }),
+      });
+
       pusher.unsubscribe('my-channel');
     };
   }, []);
