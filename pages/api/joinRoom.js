@@ -1,5 +1,4 @@
-// pages/api/joinRoom.js
-import rooms from './rooms';
+import { rooms } from './rooms';
 
 export default function handler(req, res) {
   const { room, password } = req.body;
