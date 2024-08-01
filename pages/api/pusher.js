@@ -8,23 +8,16 @@ const pusher = new Pusher({
   useTLS: true
 });
 
-const users = [];
-
 export default async function handler(req, res) {
   if (req.method === 'POST') {
-    const { name, message, action } = req.body;
+    const { room, name, message, action } = req.body;
 
     if (action === 'join') {
-      users.push({ name, socketId: req.body.socketId });
-      pusher.trigger('presence-channel', 'user-joined', { users });
+      await pusher.trigger(room, 'user-joined', { name });
     } else if (action === 'leave') {
-      const index = users.findIndex(user => user.name === name);
-      if (index !== -1) {
-        users.splice(index, 1);
-        pusher.trigger('presence-channel', 'user-left', { users });
-      }
+      await pusher.trigger(room, 'user-left', { name });
     } else if (action === 'message') {
-      pusher.trigger(`private-${req.body.target}`, 'message', { name, message });
+      await pusher.trigger(room, 'message', { name, message });
     }
     res.status(200).json({ status: 'success' });
   } else {

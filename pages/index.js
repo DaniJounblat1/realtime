@@ -3,81 +3,81 @@ import Pusher from "pusher-js";
 
 export default function Home() {
     const [name, setName] = useState("");
+    const [room, setRoom] = useState("");
     const [message, setMessage] = useState("");
     const [messages, setMessages] = useState([]);
-    const [users, setUsers] = useState([]);
-    const [target, setTarget] = useState(null);
-    const [socketId, setSocketId] = useState(null);
+    const [joined, setJoined] = useState(false);
 
     useEffect(() => {
-        const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
-            cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
-            authEndpoint: "/api/pusher",
-            auth: { params: { name } }
-        });
-
-        pusher.connection.bind("connected", () => {
-            setSocketId(pusher.connection.socket_id);
-        });
-
-        const channel = pusher.subscribe("presence-channel");
-
-        channel.bind("user-joined", ({ users }) => {
-            setUsers(users);
-            if (users.length === 2) {
-                const otherUser = users.find(user => user.name !== name);
-                setTarget(otherUser.name);
-            }
-        });
-
-        channel.bind("user-left", ({ users }) => {
-            setUsers(users);
-            if (users.length < 2) {
-                setTarget(null);
-            }
-        });
-
-        if (target) {
-            const privateChannel = pusher.subscribe(`private-${target}`);
-            privateChannel.bind("message", ({ name, message }) => {
-                setMessages([...messages, { name, message }]);
+        if (joined) {
+            const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
+                cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER
             });
+
+            const channel = pusher.subscribe(room);
+
+            channel.bind("message", data => {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { name: data.name, message: data.message }
+                ]);
+            });
+
+            channel.bind("user-joined", data => {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { name: data.name, message: "joined the room" }
+                ]);
+            });
+
+            channel.bind("user-left", data => {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { name: data.name, message: "left the room" }
+                ]);
+            });
+
+            return () => {
+                pusher.unsubscribe(room);
+            };
         }
-
-        return () => {
-            pusher.disconnect();
-        };
-    }, [name, target]);
-
-    const handleSubmit = async e => {
-        e.preventDefault();
-        await fetch("/api/pusher", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                action: "message",
-                name,
-                message,
-                target,
-                socketId
-            })
-        });
-        setMessages([...messages, { name, message }]);
-        setMessage("");
-    };
+    }, [joined, room]);
 
     const handleJoin = async e => {
         e.preventDefault();
         await fetch("/api/pusher", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "join", name, socketId })
+            body: JSON.stringify({ action: "join", room, name })
         });
+        setJoined(true);
+    };
+
+    const handleLeave = async () => {
+        await fetch("/api/pusher", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "leave", room, name })
+        });
+        setJoined(false);
+        setRoom("");
+        setName("");
+        setMessages([]);
+    };
+
+    const handleSubmit = async e => {
+        e.preventDefault();
+        await fetch("/api/pusher", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "message", room, name, message })
+        });
+        setMessage("");
     };
 
     return (
         <div style={{ textAlign: "center", marginTop: "50px" }}>
-            {!name ? (
+            {!joined ? (
                 <form onSubmit={handleJoin}>
                     <input
                         type="text"
@@ -86,11 +86,19 @@ export default function Home() {
                         placeholder="Enter your name"
                         required
                     />
+                    <input
+                        type="text"
+                        value={room}
+                        onChange={e => setRoom(e.target.value)}
+                        placeholder="Enter room name"
+                        required
+                    />
                     <button type="submit">Join</button>
                 </form>
             ) : (
                 <>
-                    <h1>Chat with {target || "waiting for another user..."}</h1>
+                    <h1>Room: {room}</h1>
+                    <button onClick={handleLeave}>Leave Room</button>
                     <ul>
                         {messages.map((msg, index) => (
                             <li key={index}>
