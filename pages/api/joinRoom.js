@@ -1,3 +1,4 @@
+// pages/api/joinRoom.js
 import rooms from './rooms';
 
 export default function handler(req, res) {
