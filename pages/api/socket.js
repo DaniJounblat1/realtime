@@ -1,6 +1,6 @@
 import { Server } from "socket.io";
 
-export default function handler(req, res) {
+const ioHandler = (req, res) => {
   if (!res.socket.server.io) {
     console.log("Setting up socket.io...");
     const io = new Server(res.socket.server);
@@ -15,6 +15,7 @@ export default function handler(req, res) {
       });
 
       socket.on("sendMessage", (message) => {
+        console.log("Message received:", message);
         io.to(message.room).emit("receiveMessage", message);
       });
 
@@ -25,6 +26,7 @@ export default function handler(req, res) {
   } else {
     console.log("Socket.io already set up");
   }
-
   res.end();
-}
+};
+
+export default ioHandler;
