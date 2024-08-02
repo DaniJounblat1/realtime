@@ -1,32 +1,32 @@
 import { Server } from "socket.io";
 
 const ioHandler = (req, res) => {
-    if (!res.socket.server.io) {
-        console.log("Setting up socket.io...");
-        const io = new Server(res.socket.server);
-        res.socket.server.io = io;
+  if (!res.socket.server.io) {
+    const io = new Server(res.socket.server, {
+      path: "/api/socket",
+    });
 
-        io.on("connection", socket => {
-            console.log("User connected:", socket.id);
+    res.socket.server.io = io;
 
-            socket.on("joinRoom", ({ room }) => {
-                socket.join(room);
-                console.log(`${socket.id} joined room: ${room}`);
-            });
+    io.on("connection", (socket) => {
+      console.log("User connected:", socket.id);
 
-            socket.on("sendMessage", message => {
-                console.log("Message received:", message);
-                io.to(message.room).emit("receiveMessage", message);
-            });
+      socket.on("joinRoom", ({ room, name }) => {
+        socket.join(room);
+        console.log(`${name} joined room: ${room}`);
+      });
 
-            socket.on("disconnect", () => {
-                console.log("User disconnected:", socket.id);
-            });
-        });
-    } else {
-        console.log("Socket.io already set up");
-    }
-    res.end();
+      socket.on("sendMessage", ({ room, message }) => {
+        io.to(room).emit("receiveMessage", message);
+      });
+
+      socket.on("disconnect", () => {
+        console.log("User disconnected:", socket.id);
+      });
+    });
+  }
+
+  res.end();
 };
 
 export default ioHandler;
