@@ -1,89 +1,122 @@
 import { useState, useEffect } from "react";
-import Head from "next/head";
-import io from "socket.io-client";
-
-
-let socket;
+import Pusher from "pusher-js";
 
 export default function Home() {
-    const [room, setRoom] = useState("");
     const [name, setName] = useState("");
-    const [joined, setJoined] = useState(false);
+    const [room, setRoom] = useState("");
     const [message, setMessage] = useState("");
     const [messages, setMessages] = useState([]);
+    const [joined, setJoined] = useState(false);
 
     useEffect(() => {
-        socket = io({
-            path: "/api/socket"
-        });
+        if (joined) {
+            const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
+                cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER
+            });
 
-        socket.on("receiveMessage", message => {
-            setMessages(prevMessages => [...prevMessages, message]);
-        });
+            const channel = pusher.subscribe(room);
 
-        return () => {
-            socket.disconnect();
-        };
-    }, []);
+            channel.bind("message", data => {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { name: data.name, message: data.message }
+                ]);
+            });
 
-    const joinRoom = () => {
-        if (room && name) {
-            socket.emit("joinRoom", { room, name });
-            setJoined(true);
+            channel.bind("user-joined", data => {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { name: data.name, message: "joined the room" }
+                ]);
+            });
+
+            channel.bind("user-left", data => {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    { name: data.name, message: "left the room" }
+                ]);
+            });
+
+            return () => {
+                pusher.unsubscribe(room);
+            };
         }
+    }, [joined, room]);
+
+    const handleJoin = async e => {
+        e.preventDefault();
+        await fetch("/api/pusher", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "join", room, name })
+        });
+        setJoined(true);
     };
 
-    const sendMessage = () => {
-        if (message) {
-            const msg = { name, text: message };
-            socket.emit("sendMessage", { room, message: msg });
-            setMessages(prevMessages => [...prevMessages, msg]);
-            setMessage("");
-        }
+    const handleLeave = async () => {
+        await fetch("/api/pusher", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "leave", room, name })
+        });
+        setJoined(false);
+        setRoom("");
+        setName("");
+        setMessages([]);
+    };
+
+    const handleSubmit = async e => {
+        e.preventDefault();
+        await fetch("/api/pusher", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "message", room, name, message })
+        });
+        setMessage("");
     };
 
     return (
-        <div className="container">
-            <Head>
-                <title>Chat Application</title>
-            </Head>
-
+        <div style={{ textAlign: "center", marginTop: "50px" }}>
             {!joined ? (
-                <div className="joinRoomContainer">
-                    <h1>Join a Room</h1>
+                <form onSubmit={handleJoin}>
                     <input
                         type="text"
-                        placeholder="Room Name"
-                        value={room}
-                        onChange={e => setRoom(e.target.value)}
-                    />
-                    <input
-                        type="text"
-                        placeholder="Your Name"
                         value={name}
                         onChange={e => setName(e.target.value)}
+                        placeholder="Enter your name"
+                        required
                     />
-                    <button onClick={joinRoom}>Join Room</button>
-                </div>
-            ) : (
-                <div className="chatContainer">
-                    <h1>Room: {room}</h1>
-                    <div className="messages">
-                        {messages.map((msg, index) => (
-                            <div key={index}>
-                                <strong>{msg.name}: </strong>
-                                {msg.text}
-                            </div>
-                        ))}
-                    </div>
                     <input
                         type="text"
-                        placeholder="Enter your message"
-                        value={message}
-                        onChange={e => setMessage(e.target.value)}
+                        value={room}
+                        onChange={e => setRoom(e.target.value)}
+                        placeholder="Enter room name"
+                        required
                     />
-                    <button onClick={sendMessage}>Send</button>
-                </div>
+                    <button type="submit">Join</button>
+                </form>
+            ) : (
+                <>
+                    <h1>Room: {room}</h1>
+                    <button onClick={handleLeave}>Leave Room</button>
+                    <ul>
+                        {messages.map((msg, index) => (
+                            <li key={index}>
+                                <strong>{msg.name}:</strong> {msg.message}
+                            </li>
+                        ))}
+                    </ul>
+                    <form onSubmit={handleSubmit}>
+                        <input
+                            type="text"
+                            value={message}
+                            onChange={e => setMessage(e.target.value)}
+                            placeholder="Enter your message"
+                            required
+                        />
+                        <button type="submit">Send</button>
+                    </form>
+                </>
             )}
         </div>
     );
