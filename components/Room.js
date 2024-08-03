@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
 import Pusher from "pusher-js";
 
-import { useRouter } from "next/router";
-import Link from "next/link";
+import { useRouter } from 'next/router';
 
 export default function Room() {
     const router = useRouter();
     const { name: room } = router.query;
 
     const [name, setName] = useState("");
-    const [password, setPassword] = useState("");
     const [message, setMessage] = useState("");
     const [messages, setMessages] = useState([]);
     const [joined, setJoined] = useState(false);
@@ -51,17 +49,12 @@ export default function Room() {
 
     const handleJoin = async e => {
         e.preventDefault();
-        const response = await fetch("/api/pusher", {
+        await fetch("/api/pusher", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "join", room, name, password })
+            body: JSON.stringify({ action: "join", room, name })
         });
-        const data = await response.json();
-        if (data.status === "success") {
-            setJoined(true);
-        } else {
-            alert(data.message);
-        }
+        setJoined(true);
     };
 
     const handleLeave = async () => {
@@ -95,21 +88,12 @@ export default function Room() {
                         placeholder="Enter your name"
                         required
                     />
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        placeholder="Enter room password (if any)"
-                    />
                     <button type="submit">Join</button>
                 </form>
             ) : (
                 <>
                     <h1>Room: {room}</h1>
                     <button onClick={handleLeave}>Leave Room</button>
-                    <Link href="/">
-                        <button>Home</button>
-                    </Link>
                     <ul>
                         {messages.map((msg, index) => (
                             <li key={index}>
