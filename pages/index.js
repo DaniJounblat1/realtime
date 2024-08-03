@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import Pusher from "pusher-js";
-
+import "../styles/globals.scss";
 
 export default function Home() {
     const [name, setName] = useState("");
-    const [rooms, setRooms] = useState([]);
     const [room, setRoom] = useState("");
-    const [password, setPassword] = useState("");
     const [message, setMessage] = useState("");
     const [messages, setMessages] = useState([]);
     const [joined, setJoined] = useState(false);
+    const [rooms, setRooms] = useState([]);
 
     useEffect(() => {
         const fetchRooms = async () => {
@@ -59,7 +58,7 @@ export default function Home() {
         await fetch("/api/pusher", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "join", room, name, password })
+            body: JSON.stringify({ action: "join", room, name })
         });
         setJoined(true);
     };
@@ -72,7 +71,7 @@ export default function Home() {
         });
         setJoined(false);
         setRoom("");
-        setPassword("");
+        setName("");
         setMessages([]);
     };
 
@@ -88,12 +87,11 @@ export default function Home() {
 
     const createRoom = async () => {
         const roomName = prompt("Enter room name:");
-        const roomPassword = prompt("Enter room password (optional):");
 
         await fetch("/api/rooms", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ room: roomName, password: roomPassword })
+            body: JSON.stringify({ room: roomName })
         });
 
         const res = await fetch("/api/rooms");
@@ -104,7 +102,7 @@ export default function Home() {
     return (
         <div className="container">
             {!name ? (
-                <form onSubmit={() => setName(name)}>
+                <form onSubmit={(e) => { e.preventDefault(); setName(name); }}>
                     <input
                         type="text"
                         value={name}
@@ -124,9 +122,6 @@ export default function Home() {
                                 <button
                                     onClick={() => {
                                         setRoom(r.name);
-                                        setPassword(
-                                            prompt("Enter room password:")
-                                        );
                                         handleJoin();
                                     }}
                                 >
