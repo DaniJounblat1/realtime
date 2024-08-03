@@ -9,6 +9,7 @@ export default function Home() {
     const [messages, setMessages] = useState([]);
     const [joined, setJoined] = useState(false);
     const [rooms, setRooms] = useState([]);
+    const [userNameSet, setUserNameSet] = useState(false);
 
     useEffect(() => {
         const fetchRooms = async () => {
@@ -53,13 +54,13 @@ export default function Home() {
         }
     }, [joined, room]);
 
-    const handleJoin = async e => {
-        e.preventDefault();
+    const handleJoin = async (roomName) => {
         await fetch("/api/pusher", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "join", room, name })
+            body: JSON.stringify({ action: "join", room: roomName, name })
         });
+        setRoom(roomName);
         setJoined(true);
     };
 
@@ -71,7 +72,6 @@ export default function Home() {
         });
         setJoined(false);
         setRoom("");
-        setName("");
         setMessages([]);
     };
 
@@ -99,15 +99,15 @@ export default function Home() {
         setRooms(data.rooms);
     };
 
+    const handleNameSubmit = (e) => {
+        e.preventDefault();
+        setUserNameSet(true);
+    };
+
     return (
         <div className="container">
-            {!name ? (
-                <form
-                    onSubmit={e => {
-                        e.preventDefault();
-                        setName(name);
-                    }}
-                >
+            {!userNameSet ? (
+                <form onSubmit={handleNameSubmit}>
                     <input
                         type="text"
                         value={name}
@@ -125,10 +125,7 @@ export default function Home() {
                             <li key={index}>
                                 {r.name}
                                 <button
-                                    onClick={() => {
-                                        setRoom(r.name);
-                                        handleJoin();
-                                    }}
+                                    onClick={() => handleJoin(r.name)}
                                 >
                                     Join
                                 </button>
