@@ -1,14 +1,24 @@
 import { useState, useEffect } from "react";
 import Pusher from "pusher-js";
 
+
 export default function Home() {
     const [name, setName] = useState("");
     const [room, setRoom] = useState("");
     const [message, setMessage] = useState("");
     const [messages, setMessages] = useState([]);
     const [joined, setJoined] = useState(false);
+    const [rooms, setRooms] = useState([]);
 
     useEffect(() => {
+        const fetchRooms = async () => {
+            const res = await fetch("/api/rooms");
+            const data = await res.json();
+            setRooms(data.rooms);
+        };
+
+        fetchRooms();
+
         if (joined) {
             const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
                 cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER
@@ -75,10 +85,24 @@ export default function Home() {
         setMessage("");
     };
 
+    const createRoom = async () => {
+        const roomName = prompt("Enter room name:");
+
+        await fetch("/api/rooms", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ room: roomName })
+        });
+
+        const res = await fetch("/api/rooms");
+        const data = await res.json();
+        setRooms(data.rooms);
+    };
+
     return (
-        <div style={{ textAlign: "center", marginTop: "50px" }}>
-            {!joined ? (
-                <form onSubmit={handleJoin}>
+        <div className="container">
+            {!name ? (
+                <form onSubmit={(e) => { e.preventDefault(); setName(name); }}>
                     <input
                         type="text"
                         value={name}
@@ -86,15 +110,27 @@ export default function Home() {
                         placeholder="Enter your name"
                         required
                     />
-                    <input
-                        type="text"
-                        value={room}
-                        onChange={e => setRoom(e.target.value)}
-                        placeholder="Enter room name"
-                        required
-                    />
-                    <button type="submit">Join</button>
+                    <button type="submit">Set Name</button>
                 </form>
+            ) : !joined ? (
+                <>
+                    <button onClick={createRoom}>Create Room</button>
+                    <ul>
+                        {rooms.map((r, index) => (
+                            <li key={index}>
+                                {r.name}
+                                <button
+                                    onClick={() => {
+                                        setRoom(r.name);
+                                        handleJoin();
+                                    }}
+                                >
+                                    Join
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </>
             ) : (
                 <>
                     <h1>Room: {room}</h1>
