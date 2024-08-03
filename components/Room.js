@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import Pusher from "pusher-js";
 
-import { useRouter } from 'next/router';
-import Link from 'next/link';
+import { useRouter } from "next/router";
+import Link from "next/link";
 
 export default function Room() {
     const router = useRouter();
@@ -57,7 +57,7 @@ export default function Room() {
             body: JSON.stringify({ action: "join", room, name, password })
         });
         const data = await response.json();
-        if (data.status === 'success') {
+        if (data.status === "success") {
             setJoined(true);
         } else {
             alert(data.message);
@@ -107,7 +107,9 @@ export default function Room() {
                 <>
                     <h1>Room: {room}</h1>
                     <button onClick={handleLeave}>Leave Room</button>
-                    <Link href="/"><button>Home</button></Link>
+                    <Link href="/">
+                        <button>Home</button>
+                    </Link>
                     <ul>
                         {messages.map((msg, index) => (
                             <li key={index}>
