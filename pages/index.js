@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Pusher from "pusher-js";
-import "../styles/globals.scss";
+
 
 export default function Home() {
     const [name, setName] = useState("");
@@ -102,7 +102,12 @@ export default function Home() {
     return (
         <div className="container">
             {!name ? (
-                <form onSubmit={(e) => { e.preventDefault(); setName(name); }}>
+                <form
+                    onSubmit={e => {
+                        e.preventDefault();
+                        setName(name);
+                    }}
+                >
                     <input
                         type="text"
                         value={name}
